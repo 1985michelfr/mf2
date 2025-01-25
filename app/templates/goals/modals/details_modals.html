@@ -1,0 +1,162 @@
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir esta meta?</p>
+                <p><strong>Título:</strong> {{ goal.title }}</p>
+                <p><strong>Valor Atual:</strong> {{ format_currency(goal.current_value, goal.currency) }}</p>
+                {% if goal.children %}
+                <div class="alert alert-danger mt-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Atenção!</strong> Esta meta possui submetas que também serão excluídas.
+                </div>
+                {% endif %}
+                {% if goal.transactions %}
+                <div class="alert alert-warning mt-2">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Aviso:</strong> Todas as transações desta meta serão excluídas.
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer d-flex gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" action="{{ url_for('goals.delete', goal_id=goal.id) }}">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Confirmar Exclusão
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Atualização de Valor -->
+<div class="modal fade" id="updateValueModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atualizar Saldo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="updateValueForm" method="POST" action="{{ url_for('goals.update_value', goal_id=goal.id) }}" data-currency="{{ goal.currency }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="value" class="form-label">Novo Valor</label>
+                        <input type="text" class="form-control" id="value" name="value" required>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Atualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Investimento/Amortização -->
+<div class="modal fade" id="investModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ "Amortizar Dívida" if goal.is_debt else "Investir" }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="investForm" method="POST" action="{{ url_for('goals.invest', goal_id=goal.id) }}" data-currency="{{ goal.currency }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="value" class="form-label">Valor</label>
+                        <input type="text" class="form-control" id="value" name="value" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Data</label>
+                        <input type="date" class="form-control" id="date" name="date" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição (opcional)</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">{{ "Amortizar" if goal.is_debt else "Investir" }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Saque/Aumento de Dívida -->
+<div class="modal fade" id="withdrawModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ "Aumentar Dívida" if goal.is_debt else "Resgatar" }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="withdrawForm" method="POST" action="{{ url_for('goals.withdraw', goal_id=goal.id) }}" data-currency="{{ goal.currency }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="value" class="form-label">Valor</label>
+                        <input type="text" class="form-control" id="value" name="value" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Data</label>
+                        <input type="date" class="form-control" id="date" name="date" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição (opcional)</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info">{{ "Aumentar" if goal.is_debt else "Resgatar" }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modais de Edição de Transação -->
+{% for transaction in goal.transaction %}
+<div class="modal fade" id="editTransactionModal{{ transaction.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Transação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editTransactionForm{{ transaction.id }}" 
+                  method="POST" 
+                  action="{{ url_for('goals.edit_transaction', goal_id=goal.id, transaction_id=transaction.id) }}"
+                  data-currency="{{ goal.currency }}"
+                  data-value="{{ transaction.amount }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="value" class="form-label">Valor</label>
+                        <input type="text" class="form-control" id="value" name="value" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Data</label>
+                        <input type="date" class="form-control" id="date" name="date" value="{{ transaction.date.strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição (opcional)</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ transaction.description }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %} 

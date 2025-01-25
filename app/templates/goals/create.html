@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Meta{% endblock %}
+
+{% block head %}
+<!-- Adiciona a biblioteca IMask -->
+<script src="https://unpkg.com/imask" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Criar Nova Meta</h2>
+    <form method="POST" action="{{ url_for('goals.create') }}" class="needs-validation" novalidate id="goalForm">
+    <!-- <form method="POST" class="needs-validation" novalidate id="goalForm" > -->
+        <div class="mb-3">
+            <label for="title" class="form-label">Título</label>
+            <input type="text" class="form-control" id="title" name="title" required 
+                   value="{{ form_data.title if form_data else '' }}">
+        </div>
+        
+        <div class="mb-3">
+            <label for="description" class="form-label">Descrição</label>
+            <textarea class="form-control" id="description" name="description" rows="3">{{ form_data.description if form_data else '' }}</textarea>
+        </div>
+        
+        <div class="mb-3">
+            <label for="is_debt" class="form-label">Esta é uma meta de dívida</label>
+            <input type="checkbox" class="form-check-input" id="is_debt" name="is_debt" {% if form_data and form_data.is_debt %}checked{% endif %} onchange="filterParentGoals(); updateTargetValueLabel(); toggleTargetType()">
+        </div>
+        
+        <div class="mb-3" id="target_type_group">
+            <label for="target_type" class="form-label">Tipo de Meta</label>
+            <select class="form-select" id="target_type" name="target_type" required>
+                <option value="value" {% if form_data and form_data.target_type == 'value' %}selected{% endif %}>Valor Específico</option>
+                <option value="percentage" {% if form_data and form_data.target_type == 'percentage' %}selected{% endif %}>Percentual do Patrimônio</option>
+            </select>
+        </div>
+        
+        <div class="mb-3" id="target_value_group">
+            <label for="target_value" class="form-label" id="target_value_label">Valor Alvo</label>
+            <input type="text" class="form-control" id="target_value" name="target_value" 
+                   value="{{ form_data.target_value if form_data else '' }}">
+        </div>
+        
+        <div class="mb-3" id="target_percentage_group" style="display: none;">
+            <label for="target_percentage" class="form-label">Percentual Alvo</label>
+            <input type="text" class="form-control" id="target_percentage" name="target_percentage" 
+                   value="{{ form_data.target_percentage if form_data else '' }}">
+        </div>
+        
+        <div class="mb-3">
+            <label for="currency" class="form-label">Moeda</label>
+            <select class="form-select" id="currency" name="currency" required>
+                <option value="BRL" {% if form_data and form_data.currency == 'BRL' %}selected{% endif %}>Real (BRL)</option>
+                <option value="USD" {% if form_data and form_data.currency == 'USD' %}selected{% endif %}>Dólar (USD)</option>
+                <option value="EUR" {% if form_data and form_data.currency == 'EUR' %}selected{% endif %}>Euro (EUR)</option>
+                <option value="BTC" {% if form_data and form_data.currency == 'BTC' %}selected{% endif %}>Bitcoin (BTC)</option>
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="target_date" class="form-label">Data Alvo</label>
+            <input type="date" class="form-control" id="target_date" name="target_date" 
+                   min="{{ today.strftime('%Y-%m-%d') }}" 
+                   value="{{ form_data.target_date if form_data else '' }}" >
+        </div>
+        
+        <div class="mb-3">
+            <label for="parent_id" class="form-label">Meta Superior</label>
+            <select class="form-select" id="parent_id" name="parent_id" onchange="checkParentGoal()">
+                <option value="">Nenhuma</option>
+                {% for goal in parent_goals %}
+                    <option value="{{ goal.id }}" 
+                            data-is-debt="{{ 'true' if goal.is_debt else 'false' }}"
+                            data-has-transactions="{{ 'true' if goal.transactions else 'false' }}"
+                            data-target-value="{{ goal.target_value }}"
+                            data-currency="{{ goal.currency }}"
+                            {% if form_data and form_data.parent_id|string == goal.id|string %}selected{% endif %}>
+                        {{ goal.title }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Área para opções de transações existentes -->
+        <div id="existing_transactions_options" class="mb-3" style="display: none;">
+            <label class="form-label">O que fazer com as transações existentes na meta superior?</label>
+            
+            <!-- Opções para moedas diferentes -->
+            <div id="different_currency_options" style="display: none;">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="move_transactions" id="create_default" value="create_default" required>
+                    <label class="form-check-label" for="create_default">
+                        Criar uma submeta padrão para armazenar as transações antigas
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="move_transactions" id="delete_transactions" value="delete" required>
+                    <label class="form-check-label" for="delete_transactions">
+                        Excluir as transações antigas
+                    </label>
+                </div>
+            </div>
+
+            <!-- Opções para mesma moeda -->
+            <div id="same_currency_options" style="display: none;">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="move_transactions" id="move_to_new" value="move" required>
+                    <label class="form-check-label" for="move_to_new">
+                        Mover para a nova meta
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="move_transactions" id="create_submeta" value="create_default" required>
+                    <label class="form-check-label" for="create_submeta">
+                        Criar uma submeta padrão para as transações antigas
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="move_transactions" id="delete_old" value="delete" required>
+                    <label class="form-check-label" for="delete_old">
+                        Excluir as transações antigas
+                    </label>
+                </div>
+            </div>
+
+            <div class="invalid-feedback">
+                Por favor, escolha o que fazer com as transações existentes.
+            </div>
+        </div>
+
+        <!-- Área para confirmação de atualização do valor alvo -->
+        <div id="update_parent_value_confirmation" class="mb-3" style="display: none;">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="confirm_update_parent_value" name="update_parent_value" value="yes" required>
+                <label class="form-check-label" for="confirm_update_parent_value">
+                    Estou ciente de que o valor alvo da meta superior será atualizado para acomodar esta submeta
+                </label>
+                <div class="invalid-feedback">
+                    Você precisa confirmar a atualização do valor alvo da meta superior.
+                </div>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Criar Meta</button>
+        <a href="{{ url_for('goals.list') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script defer>
+// Funções auxiliares
+function checkParentGoal() {
+    const parentSelect = document.getElementById('parent_id');
+    const selectedOption = parentSelect.options[parentSelect.selectedIndex];
+    const transactionsDiv = document.getElementById('existing_transactions_options');
+    const differentCurrencyOptions = document.getElementById('different_currency_options');
+    const sameCurrencyOptions = document.getElementById('same_currency_options');
+    const updateValueDiv = document.getElementById('update_parent_value_confirmation');
+    
+    // Reseta os campos
+    transactionsDiv.style.display = 'none';
+    updateValueDiv.style.display = 'none';
+    differentCurrencyOptions.style.display = 'none';
+    sameCurrencyOptions.style.display = 'none';
+    document.querySelectorAll('[name="move_transactions"]').forEach(radio => radio.required = false);
+    document.getElementById('confirm_update_parent_value').required = false;
+    
+    if (!selectedOption.value) return;
+    
+    // Verifica se tem transações
+    if (selectedOption.dataset.hasTransactions === 'true') {
+        transactionsDiv.style.display = 'block';
+        const currentCurrency = document.getElementById('currency').value;
+        const parentCurrency = selectedOption.dataset.currency;
+        
+        if (currentCurrency === parentCurrency) {
+            sameCurrencyOptions.style.display = 'block';
+        } else {
+            differentCurrencyOptions.style.display = 'block';
+        }
+        
+        document.querySelectorAll('[name="move_transactions"]').forEach(radio => radio.required = true);
+    }
+    
+    // Verifica o valor alvo
+    if (document.getElementById('target_type').value === 'value') {
+        const parentValue = parseFloat(selectedOption.dataset.targetValue);
+        const parentCurrency = selectedOption.dataset.currency;
+        const currentValue = parseUnmaskedValue(document.getElementById('target_value').value);
+        const currentCurrency = document.getElementById('currency').value;
+        
+        if (currentValue > parentValue && currentCurrency === parentCurrency) {
+            updateValueDiv.style.display = 'block';
+            document.getElementById('confirm_update_parent_value').required = true;
+        }
+    }
+}
+
+function parseUnmaskedValue(maskedValue) {
+    if (!maskedValue) return 0;
+    
+    // Remove símbolos de moeda e espaços
+    let value = maskedValue.replace(/[R$\s€₿$]/g, '');
+    
+    // Converte para o formato numérico adequado
+    if (value.includes(',')) {
+        value = value.replace(/\./g, '').replace(',', '.');
+    }
+    
+    return parseFloat(value);
+}
+
+function filterParentGoals() {
+    const isDebt = document.getElementById('is_debt').checked;
+    const parentSelect = document.getElementById('parent_id');
+    const options = parentSelect.getElementsByTagName('option');
+    
+    for (let i = 1; i < options.length; i++) {
+        const option = options[i];
+        const goalIsDebt = option.getAttribute('data-is-debt') === 'true';
+        
+        if (isDebt === goalIsDebt) {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+            if (option.selected) {
+                parentSelect.value = '';
+            }
+        }
+    }
+    
+    checkParentGoal();
+}
+
+function updateTargetValueLabel() {
+    const isDebt = document.getElementById('is_debt').checked;
+    const label = document.getElementById('target_value_label');
+    
+    if (isDebt) {
+        label.textContent = 'Valor Atual da Dívida';
+    } else {
+        label.textContent = 'Valor Alvo';
+    }
+}
+
+function toggleTargetType() {
+    const isDebt = document.getElementById('is_debt').checked;
+    const targetTypeGroup = document.getElementById('target_type_group');
+    const targetType = document.getElementById('target_type');
+    const targetPercentageGroup = document.getElementById('target_percentage_group');
+    const targetValueGroup = document.getElementById('target_value_group');
+    const targetValue = document.getElementById('target_value');
+    const targetPercentage = document.getElementById('target_percentage');
+
+    if (isDebt) {
+        targetTypeGroup.style.display = 'none';
+        targetType.value = 'value'; // Força o tipo para 'value' quando é dívida
+        targetPercentageGroup.style.display = 'none';
+        targetValueGroup.style.display = 'block';
+    } else {
+        targetTypeGroup.style.display = 'block';
+        // Restaura a visibilidade dos grupos conforme o tipo selecionado
+        if (targetType.value === 'value') {
+            targetValueGroup.style.display = 'block';
+            targetPercentageGroup.style.display = 'none';
+            targetValue.required = true;
+            targetPercentage.required = false;
+        } else {
+            targetValueGroup.style.display = 'none';
+            targetPercentageGroup.style.display = 'block';
+            targetValue.required = false;
+            targetPercentage.required = true;
+        }
+    }
+}
+
+// Configuração principal
+function initializeForm() {
+    // Máscaras para diferentes moedas
+    const masks = {
+        BRL: {
+            mask: 'R$ num',
+            blocks: {
+                num: {
+                    mask: Number,
+                    scale: 2,
+                    padFractionalZeros: true,
+                    thousandsSeparator: '.',
+                    radix: ',',
+                    mapToRadix: ['.'],
+                    min: 0,
+                    normalizeZeros: true
+                }
+            }
+        },
+        USD: {
+            mask: '$ num',
+            blocks: {
+                num: {
+                    mask: Number,
+                    scale: 2,
+                    padFractionalZeros: true,
+                    thousandsSeparator: ',',
+                    radix: '.',
+                    min: 0,
+                    normalizeZeros: true
+                }
+            }
+        },
+        EUR: {
+            mask: '€ num',
+            blocks: {
+                num: {
+                    mask: Number,
+                    scale: 2,
+                    padFractionalZeros: true,
+                    thousandsSeparator: '.',
+                    radix: ',',
+                    mapToRadix: ['.'],
+                    min: 0,
+                    normalizeZeros: true
+                }
+            }
+        },
+        BTC: {
+            mask: '₿ num',
+            blocks: {
+                num: {
+                    mask: Number,
+                    scale: 8,
+                    padFractionalZeros: false,
+                    radix: '.',
+                    min: 0,
+                    normalizeZeros: true
+                }
+            }
+        }
+    };
+
+    // Máscara para percentual
+    const percentageMask = IMask(document.getElementById('target_percentage'), {
+        mask: 'num%',
+        blocks: {
+            num: {
+                mask: Number,
+                scale: 2,
+                padFractionalZeros: true,
+                thousandsSeparator: '.',
+                radix: ',',
+                mapToRadix: ['.'],
+                max: 100,
+                min: 0,
+                normalizeZeros: true
+            }
+        },
+        eager: true
+    });
+
+    // Inicializa a máscara da moeda padrão (BRL)
+    let currentMask = IMask(document.getElementById('target_value'), masks['BRL']);
+
+    // Event Listeners
+    document.getElementById('currency').addEventListener('change', function() {
+        currentMask.destroy();
+        currentMask = IMask(document.getElementById('target_value'), masks[this.value]);
+        document.getElementById('target_value').value = '';
+        checkParentGoal();
+    });
+
+    document.getElementById('target_type').addEventListener('change', function() {
+        var valueGroup = document.getElementById('target_value_group');
+        var percentageGroup = document.getElementById('target_percentage_group');
+        var targetValue = document.getElementById('target_value');
+        var targetPercentage = document.getElementById('target_percentage');
+        
+        if (this.value === 'value') {
+            valueGroup.style.display = 'block';
+            percentageGroup.style.display = 'none';
+            document.getElementById('target_percentage').value = '';
+            targetPercentage.required = false;
+            targetValue.required = true;
+        } else {
+            valueGroup.style.display = 'none';
+            percentageGroup.style.display = 'block';
+            document.getElementById('target_value').value = '';
+            targetPercentage.required = true;
+            targetValue.required = false;
+        }
+        
+        checkParentGoal();
+    });
+
+    document.getElementById('target_value').addEventListener('input', checkParentGoal);
+    document.getElementById('is_debt').addEventListener('change', filterParentGoals);
+
+    document.getElementById('goalForm').addEventListener('submit', function(e) {
+        if (!this.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+        } else {
+            if (document.getElementById('target_type').value === 'value') {
+                const numericValue = currentMask.unmaskedValue;
+                document.getElementById('target_value').value = numericValue;
+                document.getElementById('target_percentage').value = '';
+            } else {
+                const numericPercentage = percentageMask.unmaskedValue;
+                document.getElementById('target_percentage').value = numericPercentage;
+                document.getElementById('target_value').value = '';
+            }
+        }
+        
+        this.classList.add('was-validated');
+    });
+
+    // Configurações iniciais
+    filterParentGoals();
+    checkParentGoal();
+    updateTargetValueLabel();
+    toggleTargetType();
+}
+
+// Inicializa quando a página estiver completamente carregada
+if (document.readyState === 'complete') {
+    initializeForm();
+} else {
+    window.addEventListener('load', initializeForm);
+}
+</script>
+{% endblock %} 

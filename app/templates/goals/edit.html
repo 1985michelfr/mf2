@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Meta{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-center mb-4">Editar Meta Financeira</h2>
+                <form method="POST" id="goalForm">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ goal.title }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ goal.description }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Meta</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="target_type" id="target_value_radio" value="value" 
+                                {{ 'checked' if goal.target_value is not none }}>
+                            <label class="form-check-label" for="target_value_radio">
+                                Valor Específico
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="target_type" id="target_percentage_radio" value="percentage"
+                                {{ 'checked' if goal.target_percentage is not none }}>
+                            <label class="form-check-label" for="target_percentage_radio">
+                                Percentual do Patrimônio
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6" id="target_value_container" {{ 'style=display:none;' if goal.target_percentage is not none }}>
+                            <label for="target_value" class="form-label">Valor Alvo</label>
+                            <input type="text" class="form-control" id="target_value" name="target_value" 
+                                value="{{ goal.target_value if goal.target_value is not none else '' }}">
+                        </div>
+                        <div class="col-md-6" id="target_percentage_container" {{ 'style=display:none;' if goal.target_value is not none }}>
+                            <label for="target_percentage" class="form-label">Percentual Alvo do Patrimônio</label>
+                            <input type="text" class="form-control" id="target_percentage" name="target_percentage"
+                                value="{{ goal.target_percentage if goal.target_percentage is not none else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="currency" class="form-label">Moeda</label>
+                            <select class="form-select" id="currency" name="currency">
+                                <option value="BRL" {{ 'selected' if goal.currency == 'BRL' }}>Real (R$)</option>
+                                <option value="USD" {{ 'selected' if goal.currency == 'USD' }}>Dólar ($)</option>
+                                <option value="EUR" {{ 'selected' if goal.currency == 'EUR' }}>Euro (€)</option>
+                                <option value="BTC" {{ 'selected' if goal.currency == 'BTC' }}>Bitcoin (₿)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="target_date" class="form-label">Data Alvo</label>
+                        <input type="date" class="form-control" id="target_date" name="target_date" 
+                            value="{{ goal.target_date.strftime('%Y-%m-%d') if goal.target_date else '' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="parent_id" class="form-label">Meta Superior</label>
+                        <select class="form-select" id="parent_id" name="parent_id">
+                            <option value="">Nenhuma (Meta Principal)</option>
+                            {% for parent_goal in parent_goals %}
+                                {% if parent_goal.id != goal.id %}
+                                <option value="{{ parent_goal.id }}" {{ 'selected' if goal.parent_id == parent_goal.id }}>
+                                    {{ parent_goal.title }}
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_debt" name="is_debt" {{ 'checked' if goal.is_debt }}>
+                        <label class="form-check-label" for="is_debt">Esta é uma meta de dívida</label>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                        <a href="{{ url_for('goals.list') }}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/imask"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const targetValueContainer = document.getElementById('target_value_container');
+    const targetPercentageContainer = document.getElementById('target_percentage_container');
+    const targetValueInput = document.getElementById('target_value');
+    const targetPercentageInput = document.getElementById('target_percentage');
+    const currencySelect = document.getElementById('currency');
+    const form = document.getElementById('goalForm');
+
+    // Máscaras para diferentes moedas
+    const masks = {
+        BRL: {
+            mask: 'R$ num',
+            blocks: {
+                num: {
+                    mask: Number,
+                    scale: 2,
+                    padFractionalZeros: true,
+                    thousandsSeparator: '.',
+                    radix: ',',
+                    mapToRadix: ['.'],
+                    min: 0,
+                    normalizeZeros: true
+                }
+            }
+        },
+        USD: {
+            mask: '$ num',
+            blocks: {
+                num: {
+                    mask: Number,
+                    scale: 2,
+                    padFractionalZeros: true,
+                    thousandsSeparator: ',',
+                    radix: '.',
+                    min: 0,
+                    normalizeZeros: true
+                }
+            }
+        },
+        EUR: {
+            mask: '€ num',
+            blocks: {
+                num: {
+                    mask: Number,
+                    scale: 2,
+                    padFractionalZeros: true,
+                    thousandsSeparator: '.',
+                    radix: ',',
+                    mapToRadix: ['.'],
+                    min: 0,
+                    normalizeZeros: true
+                }
+            }
+        },
+        BTC: {
+            mask: '₿ num',
+            blocks: {
+                num: {
+                    mask: Number,
+                    scale: 8,
+                    padFractionalZeros: false,
+                    radix: '.',
+                    min: 0,
+                    normalizeZeros: true
+                }
+            }
+        }
+    };
+
+    // Máscara para percentual
+    const percentageMask = IMask(targetPercentageInput, {
+        mask: 'num%',
+        blocks: {
+            num: {
+                mask: Number,
+                scale: 2,
+                padFractionalZeros: true,
+                thousandsSeparator: '.',
+                radix: ',',
+                mapToRadix: ['.'],
+                max: 100,
+                min: 0,
+                normalizeZeros: true
+            }
+        },
+        eager: true
+    });
+
+    // Adiciona o símbolo % se o usuário não digitar
+    targetPercentageInput.addEventListener('blur', function() {
+        if (this.value && !this.value.includes('%')) {
+            this.value = this.value + '%';
+        }
+        // Garante que sempre tenha duas casas decimais
+        if (this.value && !this.value.includes(',')) {
+            this.value = this.value.replace('%', ',00%');
+        } else if (this.value && this.value.split(',')[1].length < 3) {
+            this.value = this.value.replace('%', '0%');
+        }
+    });
+
+    // Inicializa a máscara da moeda atual
+    let currentMask = IMask(targetValueInput, masks[currencySelect.value]);
+
+    // Aplica o valor inicial com a máscara apropriada
+    if (targetValueInput.value) {
+        currentMask.value = targetValueInput.value;
+    }
+
+    // Alterna entre os campos de valor e percentual
+    document.querySelectorAll('input[name="target_type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'value') {
+                targetValueContainer.style.display = 'block';
+                targetPercentageContainer.style.display = 'none';
+                targetPercentageInput.value = '';
+            } else {
+                targetValueContainer.style.display = 'none';
+                targetPercentageContainer.style.display = 'block';
+                targetValueInput.value = '';
+            }
+        });
+    });
+
+    // Atualiza a máscara quando a moeda é alterada
+    currencySelect.addEventListener('change', function() {
+        currentMask.destroy();
+        currentMask = IMask(targetValueInput, masks[this.value]);
+        targetValueInput.value = '';
+    });
+
+    // Processa os valores antes do envio do formulário
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (document.getElementById('target_value_radio').checked) {
+            const numericValue = currentMask.unmaskedValue;
+            targetValueInput.value = numericValue;
+            targetPercentageInput.value = '';
+        } else {
+            const numericPercentage = percentageMask.unmaskedValue;
+            targetPercentageInput.value = numericPercentage;
+            targetValueInput.value = '';
+        }
+
+        this.submit();
+    });
+});
+</script>
+{% endblock %} 

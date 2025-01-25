@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Cotações{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4">Cotações</h1>
+        </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        <!-- Euro -->
+        <div class="col">
+            <div class="card h-100 bg-dark text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title">
+                            <i class="fas fa-euro-sign"></i> Euro
+                        </h5>
+                        {% if 'EUR' in cotacoes and cotacoes.EUR.variacao is not none %}
+                        <span class="badge {% if cotacoes.EUR.variacao > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                            {% if cotacoes.EUR.variacao > 0 %}+{% endif %}{{ "%.2f"|format(cotacoes.EUR.variacao) }}%
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if 'EUR' in cotacoes %}
+                    <p class="display-6">{{ cotacoes.EUR.valor }}</p>
+                    {% else %}
+                    <p class="text-muted">Cotação indisponível</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Dólar -->
+        <div class="col">
+            <div class="card h-100 bg-dark text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title">
+                            <i class="fas fa-dollar-sign"></i> Dólar
+                        </h5>
+                        {% if 'USD' in cotacoes and cotacoes.USD.variacao is not none %}
+                        <span class="badge {% if cotacoes.USD.variacao > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                            {% if cotacoes.USD.variacao > 0 %}+{% endif %}{{ "%.2f"|format(cotacoes.USD.variacao) }}%
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if 'USD' in cotacoes %}
+                    <p class="display-6">{{ cotacoes.USD.valor }}</p>
+                    {% else %}
+                    <p class="text-muted">Cotação indisponível</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Bitcoin -->
+        <div class="col">
+            <div class="card h-100 bg-dark text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title">
+                            <i class="fab fa-bitcoin"></i> Bitcoin
+                        </h5>
+                        {% if 'BTC' in cotacoes and cotacoes.BTC.variacao is not none %}
+                        <span class="badge {% if cotacoes.BTC.variacao > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                            {% if cotacoes.BTC.variacao > 0 %}+{% endif %}{{ "%.2f"|format(cotacoes.BTC.variacao) }}%
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if 'BTC' in cotacoes %}
+                    <p class="display-6">{{ cotacoes.BTC.valor }}</p>
+                    {% else %}
+                    <p class="text-muted">Cotação indisponível</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                As cotações são atualizadas automaticamente a cada 30 minutos. Última atualização: <b>{{ data }}</b> (SP)
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

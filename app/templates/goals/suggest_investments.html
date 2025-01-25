@@ -1,0 +1,319 @@
+{% extends "base.html" %} {% from "macros/currency.html" import format_currency
+%} {% block title %}Sugerir Investimentos{% endblock %} {% block content %}
+
+<div class="container">
+  {% if goals %}
+  <div class="row mb-4">
+    <div class="col">
+      <h1 class="display-4">Sugerir Investimentos</h1>
+    </div>
+  </div>
+  {% else %}
+  <div class="row mb-4">
+    <div class="col">
+      <h1 class="display-4">Não há metas cadastradas</h1>
+    </div>
+  </div>
+  {% endif %} {% if step == 'priority'%} {% if goals %}
+  <!-- Etapa 1: Definir prioridades -->
+  <div class="row mb-4">
+    <div class="col">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Defina a Prioridade das Metas</h5>
+          <p class="card-text">
+            Arraste as metas para ordenar por prioridade (mais importante no
+            topo)
+          </p>
+
+          <form
+            method="POST"
+            action="{{ url_for('goals.save_priorities') }}"
+            id="priorityForm"
+          >
+            <div class="list-group" id="sortable">
+              {% for goal in goals %}
+              <div
+                class="list-group-item d-flex justify-content-between align-items-center"
+                data-goal-id="{{ goal.id }}"
+              >
+                <div>
+                  <i class="fas fa-grip-vertical me-2"></i>
+                  {{ goal.title }}
+                  <input
+                    type="hidden"
+                    name="priorities[]"
+                    value="{{ goal.id }}"
+                  />
+                </div>
+                <span class="badge bg-primary">
+                  {{ format_currency(goal.current_value, goal.currency) }} {% if
+                  goal.target_value %} / {{ format_currency(goal.target_value,
+                  goal.currency) }} {% endif %}
+                </span>
+              </div>
+              {% endfor %}
+            </div>
+
+            <div class="mt-4">
+              <button type="submit" class="btn btn-primary">
+                Salvar Prioridades e Continuar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %} {% else %}
+  <!-- Etapa 2: Sugerir distribuição -->
+  <div class="row mb-4">
+    <div class="col">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Valor a Investir</h5>
+
+          <form
+            method="POST"
+            action="{{ url_for('goals.calculate_suggestion') }}"
+            id="suggestionForm"
+          >
+            <div class="row">
+              <div class="col-md-8 mb-3">
+                <label for="amount" class="form-label">Valor Total</label>
+                <input
+                  type="text"
+                  class="form-control currency-input"
+                  id="amount"
+                  name="amount"
+                  required
+                />
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="currency" class="form-label">Moeda</label>
+                <select
+                  class="form-select"
+                  id="currency"
+                  name="currency"
+                  required
+                >
+                  <option value="BRL">Real (BRL)</option>
+                  <option value="USD">Dólar (USD)</option>
+                  <option value="EUR">Euro (EUR)</option>
+                  <option value="BTC">Bitcoin (BTC)</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              Calcular Sugestão
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% endif %} {% if suggestions %}
+  <div class="row mb-4">
+    <div class="col">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Sugestões de Investimento</h5>
+
+          <div class="table-responsive">
+            <table class="table table-dark">
+              <thead>
+                <tr>
+                  <th>Meta</th>
+                  <th>Valor Sugerido (Moeda da Meta)</th>
+                  <th>Valor Sugerido (Moeda do Investimento)</th>
+                  <th>Situação Atual</th>
+                  <th>Situação Após</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for suggestion in suggestions %}
+                <tr>
+                  <td>{{ suggestion.goal.title }}</td>
+                  <td>
+                    {{ format_currency(suggestion.amount,
+                    suggestion.goal.currency) }}
+                  </td>
+                  <td>
+                    {{ format_currency(suggestion.amount_original,
+                    request.form.get('currency')) }}
+                  </td>
+                  <td>
+                    {% if suggestion.goal.is_debt %} {{
+                    (suggestion.current_percentage)|round(2) }}%{% elif
+                    suggestion.goal.target_value %} {{
+                    (suggestion.current_percentage)|round(2) }}%{% else %} {{
+                    suggestion.goal.target_percentage }}% {% endif %}
+                  </td>
+                  <td>
+                    {% if suggestion.goal.is_debt %} {{
+                    (suggestion.new_percentage)|round(2) }}% {% elif
+                    suggestion.goal.target_value %} {{
+                    (suggestion.new_percentage)|round(2) }}%{% else %} {{
+                    suggestion.goal.target_percentage }}%{% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <form
+            method="POST"
+            action="{{ url_for('goals.apply_suggestion') }}"
+            class="mt-4"
+          >
+            <input
+              type="hidden"
+              name="suggestion_data"
+              value='[
+                            {% for suggestion in suggestions %}
+                                {
+                                    "goal_id": {{ suggestion["goal_id"] }},
+                                    "amount": {{ suggestion["amount"] }},
+                                    "amount_original": {{ suggestion["amount_original"] }},
+                                    "current_percentage": {{ suggestion["current_percentage"] }},
+                                    "new_percentage": {{ suggestion["new_percentage"] }}
+                                }{% if not loop.last %},{% endif %}
+                            {% endfor %}
+                        ]'
+            />
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-check"></i> Aplicar Sugestão
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %} {% block scripts %} {{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+<script src="https://unpkg.com/imask"></script>
+<script defer>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Inicializa o Sortable para ordenação das metas
+    const sortable = document.getElementById("sortable");
+    if (sortable) {
+      new Sortable(sortable, {
+        animation: 150,
+        handle: ".fa-grip-vertical",
+        onEnd: function () {
+          const items = sortable.querySelectorAll(".list-group-item");
+          items.forEach((item, index) => {
+            const input = item.querySelector('input[name="priorities[]"]');
+            if (input) {
+              input.value = item.dataset.goalId;
+            }
+          });
+        },
+      });
+    }
+
+    // Inicializa as máscaras de moeda
+    const amountInput = document.getElementById("amount");
+    const currencySelect = document.getElementById("currency");
+    let currentMask = null;
+
+    function updateMask() {
+      if (!amountInput) return; // Verifica se o input existe
+
+      const currency = currencySelect.value;
+      let maskConfig;
+
+      switch (currency) {
+        case "BRL":
+          maskConfig = {
+            mask: "R$ num",
+            blocks: {
+              num: {
+                mask: Number,
+                scale: 2,
+                thousandsSeparator: ".",
+                padFractionalZeros: true,
+                radix: ",",
+                mapToRadix: ["."],
+                normalizeZeros: true,
+                min: 0,
+              },
+            },
+          };
+          break;
+        case "USD":
+          maskConfig = {
+            mask: "$ num",
+            blocks: {
+              num: {
+                mask: Number,
+                scale: 2,
+                thousandsSeparator: ",",
+                padFractionalZeros: true,
+                radix: ".",
+                normalizeZeros: true,
+                min: 0,
+              },
+            },
+          };
+          break;
+        case "EUR":
+          maskConfig = {
+            mask: "€ num",
+            blocks: {
+              num: {
+                mask: Number,
+                scale: 2,
+                thousandsSeparator: ".",
+                padFractionalZeros: true,
+                radix: ",",
+                mapToRadix: ["."],
+                normalizeZeros: true,
+                min: 0,
+              },
+            },
+          };
+          break;
+        case "BTC":
+          maskConfig = {
+            mask: "₿ num",
+            blocks: {
+              num: {
+                mask: Number,
+                scale: 8,
+                padFractionalZeros: false,
+                radix: ".",
+                normalizeZeros: true,
+                min: 0,
+              },
+            },
+          };
+          break;
+      }
+
+      // Destroi a máscara anterior se existir
+      if (currentMask) {
+        currentMask.destroy();
+      }
+
+      // Cria a nova máscara
+      currentMask = IMask(amountInput, maskConfig);
+
+      // Limpa o campo quando a moeda é alterada
+      amountInput.value = "";
+    }
+
+    // Atualiza a máscara quando a moeda é alterada
+    if (currencySelect) {
+      currencySelect.addEventListener("change", updateMask);
+      // Inicializa a máscara com a moeda padrão
+      updateMask();
+    }
+  });
+</script>
+{% endblock %}

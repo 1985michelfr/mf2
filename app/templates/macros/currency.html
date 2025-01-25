@@ -1,0 +1,23 @@
+{% macro format_currency(value, currency) %}
+    {% if value is none %}
+        {% if currency == 'BRL' %}
+            R$ 0,00
+        {% elif currency == 'USD' %}
+            $ 0.00
+        {% elif currency == 'EUR' %}
+            € 0,00
+        {% elif currency == 'BTC' %}
+            ₿ 0.00000000
+        {% endif %}
+    {% else %}
+        {% if currency == 'BRL' %}
+            R$ {{ '{:,.2f}'.format(value).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+        {% elif currency == 'USD' %}
+            $ {{ '{:,.2f}'.format(value) }}
+        {% elif currency == 'EUR' %}
+            € {{ '{:,.2f}'.format(value).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+        {% elif currency == 'BTC' %}
+            ₿ {{ '{:.8f}'.format(value) }}
+        {% endif %}
+    {% endif %}
+{% endmacro %} 
